@@ -61,6 +61,7 @@ def past_nvalid_values(df:pd.DataFrame,n:int,df_bool:pd.DataFrame=None)-> dict:
     return out_dict["df"]
 
 
+
 def past_nvalid_values_dicts(df_dict,df_bool:pd.DataFrame,n:int)-> dict:
     
     # whilst n > 0, we are going to find the previous valid value
@@ -82,6 +83,11 @@ def dict_transfer(tf_dict,names):
     for name in names:
         out_dict[name] = tf_dict[name]
     return out_dict
+
+def infomation_ratio(data,bench):
+    error = data-bench
+    ratio = error.mean(skipna=True)/(error.std(skipna=True))
+    return ratio
 
 
 class data_obj:
@@ -108,7 +114,7 @@ class data_obj:
     ## Key Functions ##
 
     # calculate z score 
-    def calc_z_scores(self, inplace = False, fields=None, use_sample_mean = True):
+    def calc_z_scores(self, inplace = False, fields=None, use_sample_mean = True, clip="True",clipval=4):
         out_df = {}
         if fields is None:
             fields = self.data_dict.keys()
@@ -119,11 +125,19 @@ class data_obj:
                 tdf = tdf.subtract(tdf.mean(axis = 1,skipna=True),"index").div(tdf.std(axis = 1,skipna=True),"index")
             else:
                 tdf = tdf.div(tdf.std(axis = 1,skipna=True),"index")
+
+            if clip == "True":
+                tdf = pd.DataFrame(tdf).clip(-clipval,clipval)
+            if clip == "Discard":
+                tdf[tdf>=clipval] = 0
+                tdf[tdf<=-clipval] = 0
             
             if inplace:
                 self.data_dict[field] = tdf 
             else:
                 out_df[field] = tdf.copy()
+
+        
 
         if not inplace:
             new_data = data_obj(self.tmbool.copy(),data_dict=out_df)
@@ -133,9 +147,9 @@ class data_obj:
         if tmbool is None:
             tmbool = self.tmbool
 
-        self.regulate(tmbool=tmbool)
+        out = self.regulate(tmbool=tmbool,inplace=False)
         
-        port = port_obj(tmbool.copy(),self.data_dict["ret"].copy(),self.data_dict[score].copy())
+        port = port_obj(tmbool.copy(),out.data_dict["ret"].copy(),out.data_dict[score].copy())
         return port
 
     
@@ -159,8 +173,12 @@ class data_obj:
         out_dict={}
         for key in self.data_dict.keys():
             tdf = self.data_dict[key]
-            tdf = tdf.reindex(index= self.tmbool.index,columns = self.tmbool.columns)
-            tdf[self.tmbool==False]=np.nan
+
+            common_rows = tdf.index.intersection(tmbool.index)
+            common_cols = tdf.columns.intersection(tmbool.columns)
+
+            tdf = tdf.loc[common_rows, common_cols]
+            tdf[tmbool==False]=np.nan
 
             if inplace:
                 self.data_dict[key] = tdf
@@ -170,6 +188,33 @@ class data_obj:
         if not inplace: 
             new_data =  data_obj(tmbool, out_dict)
             return new_data
+
+    def gen_mldf(self,fields:list,tmbool:pd.DataFrame=None):
+        if tmbool is None:
+            tmbool = self.tmbool
+        
+        mldf = pd.DataFrame(columns=fields)
+        tdict = {}
+        for field in fields:
+            tdf = self.get(field).copy()
+            tdf[tmbool!=True]=np.nan
+            tdf = tdf.stack(dropna=False)
+            mldf[field] = tdf
+        return mldf
+
+
+        # mldf = pd.DataFrame(columns=df_dict.keys())
+        # out_dict = {}
+
+        # for dfs in df_dict.keys():
+        #     cdf = pd.DataFrame(Formatted_dfdict[dfs]).stack(dropna=False)      #cdf = current dataframe
+        #     tempdict[dfs] = cdf
+ 
+        # for dfs in Formatted_dfdict.keys():
+        #     cdf =tempdict[dfs]
+        #     mldf[dfs]=cdf
+
+        # return mldf
 
 
     
