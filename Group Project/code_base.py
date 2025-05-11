@@ -254,6 +254,19 @@ class port_obj:
         sw = lw.copy()
 
         if stype == "default":
+            lw[pscore>=1-percentile]=pscore[pscore>=1-percentile]-0.5
+            lw = lw.divide(lw.sum(1),"index")*1
+            lw.fillna(0,inplace=True)
+
+            sw[pscore<=percentile]=pscore[pscore<=percentile]-0.5
+            sw = sw.divide(-sw.sum(1),"index")*1
+            sw.fillna(0,inplace=True)
+
+            lsw = lw + sw
+            self.lw = lw
+            self.sw = sw 
+
+        if stype == "equal_weight":
             lw[pscore>=1-percentile]=1
             lw = lw.divide(lw.sum(1),"index")*1
             lw.fillna(0,inplace=True)
