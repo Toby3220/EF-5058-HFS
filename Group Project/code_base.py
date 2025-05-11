@@ -3,6 +3,7 @@ import datetime as dt
 import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
 
 def read_multi_csv(filenames : list, dt_format : str = '%Y-%m', file_dir = None, name:list = None) -> dict:
     '''
@@ -88,6 +89,17 @@ def infomation_ratio(data,bench):
     error = data-bench
     ratio = error.mean(skipna=True)/(error.std(skipna=True))
     return ratio
+
+def run_ml(mldf):
+    mldf.dropna(0,inplace=True)
+    Y = mldf.pop("RET-ML")
+    X = mldf
+    X["Intercept"] = 1
+    model=sm.OLS(Y,X)
+
+    res = model.fit()
+    return model, res
+    
 
 
 class data_obj:
@@ -190,19 +202,21 @@ class data_obj:
             return new_data
 
     def gen_mldf(self,fields:list,tmbool:pd.DataFrame=None):
+
+        data = self.regulate(tmbool=tmbool,inplace=False)
         if tmbool is None:
             tmbool = self.tmbool
         
         mldf = pd.DataFrame(columns=fields)
         tdict = {}
         for field in fields:
-            tdf = self.get(field).copy()
+            tdf = data.get(field).copy()
             tdf[tmbool!=True]=np.nan
             tdf = tdf.stack(dropna=False)
             mldf[field] = tdf
         return mldf
 
-
+    
         # mldf = pd.DataFrame(columns=df_dict.keys())
         # out_dict = {}
 
