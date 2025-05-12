@@ -85,10 +85,10 @@ def dict_transfer(tf_dict,names):
         out_dict[name] = tf_dict[name]
     return out_dict
 
-def infomation_ratio(data,bench):
+def information_ratio(data,bench):
     error = data-bench
     ratio = error.mean(skipna=True)/(error.std(skipna=True))
-    return ratio
+    return ratio*np.sqrt(12)
 
 def run_ml(mldf):
     mldf.dropna(0,inplace=True)
@@ -323,9 +323,6 @@ class port_obj:
     
 
 
-    def gen_equal_weight(type:str="equal"):
-        # if type == "equal":
-        pass
 
     def get_port_ret(self,weight:pd.DataFrame=None,bps = 0):
 
@@ -350,10 +347,17 @@ class port_obj:
             scores.loc[row,pct.index] = pct
         return scores
     
-    def quick_plt_diff(self, bench_port, bps = 10):
-
-        ret, cret = self.get_port_ret(bps=bps)
-        bench_ret, bench_cret = bench_port.get_port_ret(bps=bps)
+    def quick_plt_diff(self, bench_port, bps = 10, type = "lsw"):
+        
+        if type == "lsw":
+            ret, cret = self.get_port_ret(bps=bps)
+            bench_ret, bench_cret = bench_port.get_port_ret(bps=bps)
+        elif type == "lw":
+            ret, cret = self.get_port_ret(self.lw, bps=bps)
+            bench_ret, bench_cret = bench_port.get_port_ret(bench_port.lw, bps=bps)
+        elif type == "sw":
+            ret, cret = self.get_port_ret(self.sw, bps=bps)
+            bench_ret, bench_cret = bench_port.get_port_ret(bench_port.sw, bps=bps)
 
         plt.figure(0)
 
@@ -366,11 +370,17 @@ class port_obj:
         plt.title("Factor Portfolio Comparison")
         plt.show()
 
-        print(print("Approach information Ratio: {}".format(round(infomation_ratio(ret,bench_ret),3))))
+        print("Approach information Ratio: {}".format(round(information_ratio(ret,bench_ret),3)))
+        print("Approach Sharpe Ratio (rf = 3%): {}".format(round(information_ratio(ret,0.0025),3)))
+        mdd = max(-(cret/cret.cummax()-1))
+        print("Approach Max Drawdown : {}".format(round(mdd,3)))
+
+
+
 
         plt.figure(1)
         plt.plot(cret-bench_cret)
-        plt.legend(["% points difference"])
+        plt.legend(["% points difference (0.1 = 10%)"])
         plt.xlabel("Year")
         plt.ylabel("cumaltive returns (multiples of starting value)")
         plt.title("Approach Return Relative to Momentum Value Benchmark")
@@ -388,7 +398,7 @@ class port_obj:
 
         plt.legend(["Long Component", "Short Compoenent"])
         plt.xlabel("Year")
-        plt.ylabel("cumaltive returns (multiples of starting value)")
+        plt.ylabel("% points difference (0.1 = 10%)")
         plt.title("Difference vs Benchmark (Long & Short Component Portfolio)")
         plt.show()
         
