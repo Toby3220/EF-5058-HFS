@@ -321,6 +321,8 @@ class port_obj:
 
         return lsw
     
+
+
     def gen_equal_weight(type:str="equal"):
         # if type == "equal":
         pass
@@ -348,7 +350,47 @@ class port_obj:
             scores.loc[row,pct.index] = pct
         return scores
     
+    def quick_plt_diff(self, bench_port, bps = 10):
 
+        ret, cret = self.get_port_ret(bps=bps)
+        bench_ret, bench_cret = bench_port.get_port_ret(bps=bps)
+
+        plt.figure(0)
+
+        plt.plot(cret)
+        plt.plot(bench_cret)
+
+        plt.legend(["Current Approach","Benchmark"])
+        plt.xlabel("Year")
+        plt.ylabel("cumaltive returns (multiples of starting value)")
+        plt.title("Factor Portfolio Comparison")
+        plt.show()
+
+        print(print("Approach information Ratio: {}".format(round(infomation_ratio(ret,bench_ret),3))))
+
+        plt.figure(1)
+        plt.plot(cret-bench_cret)
+        plt.legend(["% points difference"])
+        plt.xlabel("Year")
+        plt.ylabel("cumaltive returns (multiples of starting value)")
+        plt.title("Approach Return Relative to Momentum Value Benchmark")
+
+
+    def quick_plt_ls(self, bench_port):
+        _, tcret = self.get_port_ret(weight=self.lw,bps=10)
+        _, bench_tcret = self.get_port_ret(weight=bench_port.lw,bps=10)
+        plt.plot(tcret-bench_tcret)
+
+        _, tcret= self.get_port_ret( self.sw, bps=10)
+        _, bench_tcret= self.get_port_ret( bench_port.sw, bps=10)
+
+        plt.plot(tcret-bench_tcret)
+
+        plt.legend(["Long Component", "Short Compoenent"])
+        plt.xlabel("Year")
+        plt.ylabel("cumaltive returns (multiples of starting value)")
+        plt.title("Difference vs Benchmark (Long & Short Component Portfolio)")
+        plt.show()
         
 
 # df_dict = read_multi_csv(filenames=["df_annacc_spx","df_memboolG_spx"],name=["annacc","tmbool"])
