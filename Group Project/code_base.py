@@ -347,7 +347,24 @@ class port_obj:
             scores.loc[row,pct.index] = pct
         return scores
     
-    def quick_plt_diff(self, bench_port, bps = 10, type = "lsw"):
+    def calc_evals(self,ret, bench_ret = 0, res: pd.DataFrame = None, Feild_Name = "Current Approach", rf = 0.0025):
+        if res is None:
+            res = pd.DataFrame(index = ["Annualised Information Ratio","Annualised Sharpe Ratio (rf = 3%)", "Max Drawdown", "Annualised Volatility","Annualised Average Return"])
+
+        res.loc["Annualised Information Ratio", Feild_Name ] = "%.3f" %round(information_ratio(ret,bench_ret),3)
+        res.loc["Annualised Sharpe Ratio (rf = 3%)",Feild_Name] = "%.3f" %round(information_ratio(ret,rf),3)
+        cret = (ret+1).cumprod(skipna=True)        
+        mdd = max(-(cret/cret.cummax()-1))
+            
+        res.loc["Max Drawdown",Feild_Name] = "%.3f" %round(mdd,3)
+        res.loc["Annualised Volatility",Feild_Name] = "%.3f" %round(ret.std(skipna=True)*np.sqrt(12),3)
+        res.loc["Annualised Average Return",Feild_Name] = "%.3f"%round(ret.mean(skipna=True)*(12),3)
+
+        return res
+
+            
+    
+    def quick_plt_diff(self, bench_port, bps = 10, type = "lsw", return_res = False):
         
         if type == "lsw":
             ret, cret = self.get_port_ret(bps=bps)
@@ -358,6 +375,9 @@ class port_obj:
         elif type == "sw":
             ret, cret = self.get_port_ret(self.sw, bps=bps)
             bench_ret, bench_cret = bench_port.get_port_ret(bench_port.sw, bps=bps)
+        elif type == "from_ret":
+            ret = bench_port
+            cret = (bench_port+1).cumprod()
 
         plt.figure(0)
 
@@ -370,13 +390,19 @@ class port_obj:
         plt.title("Factor Portfolio Comparison")
         plt.show()
 
-        print("Approach information Ratio: {}".format(round(information_ratio(ret,bench_ret),3)))
-        print("Approach Sharpe Ratio (rf = 3%): {}".format(round(information_ratio(ret,0.0025),3)))
-        mdd = max(-(cret/cret.cummax()-1))
-        print("Approach Max Drawdown : {}".format(round(mdd,3)))
+        res = self.calc_evals(ret,bench_ret)
+        res = self.calc_evals(bench_ret,bench_ret,res,"Benchmark")
+        # res.loc["Annualised Information Ratio", : ] = [round(information_ratio(ret,bench_ret),3), 0]
+        # res.loc["Annualised Sharpe Ratio (rf = 3%)",:] = [round(information_ratio(ret,0.0025),3),round(information_ratio(bench_ret,0.0025),3)]
+        
+        # mdd = max(-(cret/cret.cummax()-1))
+        # bench_mdd = max(-(bench_cret/bench_cret.cummax()-1))
+            
+        # res.loc["Max Drawdown",:] = [round(mdd,3), round(bench_mdd,3)]
+        # res.loc["Annualised Volatility",:] = [round(ret.std(skipna=True)*np.sqrt(12),3), round(bench_ret.std(skipna=True)*np.sqrt(12),3)]
+        # res.loc["Annualised Average Return",:] = [round(ret.mean(skipna=True)*(12),3), round(bench_ret.mean(skipna=True)*(12),3)]
 
-
-
+        print(res)
 
         plt.figure(1)
         plt.plot(cret-bench_cret)
@@ -385,6 +411,8 @@ class port_obj:
         plt.ylabel("cumaltive returns (multiples of starting value)")
         plt.title("Approach Return Relative to Momentum Value Benchmark")
 
+        if return_res:
+            return res
 
     def quick_plt_ls(self, bench_port):
         _, tcret = self.get_port_ret(weight=self.lw,bps=10)
